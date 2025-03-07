@@ -48,7 +48,7 @@ struct UserInfo {
 }
 
 fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:420")?;
+    let listener = TcpListener::bind("127.0.0.1:25567")?;
     let users: Arc<Mutex<Vec<UserInfo>>> = Arc::new(Mutex::new(Vec::new()));
     let streams: Arc<Mutex<Vec<TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
 
