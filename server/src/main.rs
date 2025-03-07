@@ -33,7 +33,7 @@ use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::str;
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self, JoinHandle};
 use uuid::Uuid;
 
 const NEW_USER_PACKET_HEADER: &str = "NEWU";
@@ -51,19 +51,29 @@ fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:25567")?;
     let users: Arc<Mutex<Vec<UserInfo>>> = Arc::new(Mutex::new(Vec::new()));
     let streams: Arc<Mutex<Vec<TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut thread_handles: Vec<JoinHandle<()>> = Vec::new();
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let users_clone = Arc::clone(&users);
                 let streams_clone = Arc::clone(&streams);
-                let _ = thread::spawn(move || {
+
+                let handle = thread::spawn(move || {
                     handle_client(stream, users_clone, streams_clone);
                 });
+                thread_handles.push(handle);
             }
-            Err(err) => eprintln!("Client has dropped, likely a timeout. err: {err}"),
+            Err(_) => (),
         }
     }
+
+    // This point will never be reached, Need to come up with a way of SIGTERM and a regular shutdown command
+    println!("Closing hanging Threads...");
+    for handles in thread_handles {
+        handles.join().unwrap();
+    }
+
     Ok(())
 }
 
@@ -123,9 +133,11 @@ fn handle_client(
                     "User \"{}\" from {} disconnected by force-closing their client.",
                     thread_user_name, thread_ip_addr
                 );
+                break;
             }
             Err(err) => {
                 eprintln!(" 128 {err}");
+                break;
             }
         }
 
