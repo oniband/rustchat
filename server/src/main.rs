@@ -105,9 +105,8 @@ fn handle_client(
                     let streams_clone = Arc::clone(&streams);
                     remove_stream(streams_clone, thread_ip_addr);
 
-                    stream.shutdown(std::net::Shutdown::Both).unwrap();
                     println!(
-                        "User \"{}\" from {} disconnected by force-closing their client.",
+                        "User \"{}\" from {} disconnected.",
                         thread_user_name, thread_ip_addr
                     );
                     break;
@@ -120,10 +119,13 @@ fn handle_client(
                 if err.kind() == io::ErrorKind::ConnectionReset
                     || err.kind() == io::ErrorKind::ConnectionAborted =>
             {
-                stream.shutdown(std::net::Shutdown::Both).unwrap();
+                println!(
+                    "User \"{}\" from {} disconnected by force-closing their client.",
+                    thread_user_name, thread_ip_addr
+                );
             }
             Err(err) => {
-                eprintln!("{err}");
+                eprintln!(" 128 {err}");
             }
         }
 
@@ -231,7 +233,10 @@ fn remove_user_by_id(users: Arc<Mutex<Vec<UserInfo>>>, user_id: String) {
 
 fn remove_stream(streams: Arc<Mutex<Vec<TcpStream>>>, address: SocketAddr) {
     let mut streams_lock = streams.lock().unwrap();
-    streams_lock.retain(|stream_closure| stream_closure.peer_addr().unwrap() != address);
+    streams_lock.retain(|stream_closure| match stream_closure.peer_addr() {
+        Ok(peer_addr) => peer_addr != address,
+        Err(_) => false,
+    });
 }
 
 fn _validate_user(_users: Arc<Mutex<Vec<UserInfo>>>, _user_id: String, _user_name: String) -> bool {
