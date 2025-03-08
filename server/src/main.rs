@@ -98,6 +98,7 @@ fn handle_client(
     }
 
     loop {
+        std::io::stdout().flush().unwrap();
         match stream.read(&mut response_buffer) {
             Ok(0) => {
                 if !user_initialized {
@@ -110,7 +111,7 @@ fn handle_client(
                         thread_ip_addr
                     );
 
-                    let message = format!("MESS A ghost left the channel... \n");
+                    let message = format!("MESS A ghost left the channel...");
                     for stream in streams.lock().unwrap().iter() {
                         write_to_stream_and_flush(stream, &message).unwrap();
                     }
@@ -127,7 +128,7 @@ fn handle_client(
                         thread_user_name, thread_ip_addr
                     );
 
-                    let message = format!("MESS {} has left the channel \n", thread_user_name);
+                    let message = format!("MESS {} has left the channel", thread_user_name);
                     for stream in streams.lock().unwrap().iter() {
                         write_to_stream_and_flush(stream, &message).unwrap();
                     }
@@ -185,10 +186,10 @@ fn handle_client(
                 );
 
                 //Give their client their uuid
-                write_to_stream_and_flush(&stream, &format!("USER {}\n", new_user_uuid)).unwrap();
+                write_to_stream_and_flush(&stream, &format!("USER {}", new_user_uuid)).unwrap();
 
                 //Broadcast Entry to other clients
-                let message = format!("MESS {} Has entered the channel\n", thread_user_name);
+                let message = format!("MESS {} Has entered the channel", thread_user_name);
                 for stream in streams.lock().unwrap().iter() {
                     write_to_stream_and_flush(stream, &message).unwrap();
                 }
@@ -197,10 +198,10 @@ fn handle_client(
                 //_validate_user(users, user_id, user_name)
 
                 let message = format!(
-                    "MESS {} at {:?}: {}\n",
+                    "MESS {} at {:?}: {}",
                     thread_user_name,
                     chrono::Local::now(),
-                    response_str_as_vec[2..].join(" ")
+                    response_str_as_vec[1..].join(" ")
                 );
 
                 for stream in streams.lock().unwrap().iter() {
@@ -213,13 +214,15 @@ fn handle_client(
                     thread_user_name, thread_ip_addr
                 );
 
+                write_to_stream_and_flush(&stream, "EXIT").unwrap();
+
                 let users_clone = Arc::clone(&users);
                 remove_user_by_id(users_clone, String::from(&thread_user_id));
 
                 let streams_clone = Arc::clone(&streams);
                 remove_stream(streams_clone, thread_ip_addr);
 
-                let message = format!("MESS User {:?} has left the channel\n", thread_user_name);
+                let message = format!("MESS User {:?} has left the channel", thread_user_name);
                 let streams_lock = streams.lock().unwrap();
                 for stream in streams_lock.iter() {
                     write_to_stream_and_flush(stream, &message).unwrap();
@@ -230,7 +233,7 @@ fn handle_client(
             }
             _ => {
                 println!("Unknown Request \"{}\" ", response_str_as_vec[0]);
-                write_to_stream_and_flush(&stream, "Unknown Request\n").unwrap();
+                write_to_stream_and_flush(&stream, "Unknown Request").unwrap();
             }
         }
     }
