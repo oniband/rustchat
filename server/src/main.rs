@@ -98,7 +98,6 @@ fn handle_client(
     }
 
     loop {
-        std::io::stdout().flush().unwrap();
         match stream.read(&mut response_buffer) {
             Ok(0) => {
                 if !user_initialized {
@@ -135,9 +134,7 @@ fn handle_client(
                     break;
                 }
             }
-            Ok(_res) => {
-                println!("");
-            }
+            Ok(_res) => (),
             Err(ref err)
                 if err.kind() == io::ErrorKind::ConnectionReset
                     || err.kind() == io::ErrorKind::ConnectionAborted =>
@@ -163,8 +160,6 @@ fn handle_client(
             Err(err) => panic!("Invalid sequence! {}", err),
         };
 
-        println!("{:?}", response_str_as_vec);
-
         match response_str_as_vec[0] {
             NEW_USER_PACKET_HEADER => {
                 //Create a user and add it to the Arc
@@ -186,10 +181,10 @@ fn handle_client(
                 );
 
                 //Give their client their uuid
-                write_to_stream_and_flush(&stream, &format!("USER {}", new_user_uuid)).unwrap();
+                write_to_stream_and_flush(&stream, &format!("USER {}\n", new_user_uuid)).unwrap();
 
                 //Broadcast Entry to other clients
-                let message = format!("MESS {} Has entered the channel", thread_user_name);
+                let message = format!("MESS {} Has entered the channel\n", thread_user_name);
                 for stream in streams.lock().unwrap().iter() {
                     write_to_stream_and_flush(stream, &message).unwrap();
                 }
@@ -197,11 +192,12 @@ fn handle_client(
             MESSAGE_PACKET_HEADER => {
                 //_validate_user(users, user_id, user_name)
 
+                stream.flush().unwrap();
                 let message = format!(
-                    "MESS {} at {:?}: {}",
+                    "MESS {} at {:?}: {}\n",
                     thread_user_name,
                     chrono::Local::now(),
-                    response_str_as_vec[1..].join(" ")
+                    response_str_as_vec[2..].join(" ")
                 );
 
                 for stream in streams.lock().unwrap().iter() {
@@ -222,7 +218,7 @@ fn handle_client(
                 let streams_clone = Arc::clone(&streams);
                 remove_stream(streams_clone, thread_ip_addr);
 
-                let message = format!("MESS User {:?} has left the channel", thread_user_name);
+                let message = format!("MESS User {:?} has left the channel\n", thread_user_name);
                 let streams_lock = streams.lock().unwrap();
                 for stream in streams_lock.iter() {
                     write_to_stream_and_flush(stream, &message).unwrap();

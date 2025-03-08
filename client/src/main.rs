@@ -18,8 +18,13 @@ fn main() -> std::io::Result<()> {
     let mut stream: TcpStream = TcpStream::connect("127.0.0.1:25567")?;
     let program_should_exit: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
-    let user_id = create_new_user(&mut stream, "oniband".to_string()).unwrap();
-    //println!("You have been assigned the uuid: {user_id} with the username oniband");
+    println!("Please enter a username");
+    let mut user_name_input = String::new();
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut user_name_input).unwrap();
+    io::stdout().flush().unwrap();
+
+    let user_id = create_new_user(&mut stream, user_name_input).unwrap();
 
     let stream_read_thread_clone = stream.try_clone().unwrap();
     let program_should_exit_read_clone = Arc::clone(&program_should_exit);
@@ -75,11 +80,9 @@ fn read_user_input_and_send(
         let mut input = String::new();
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
-        io::stdout().flush().unwrap();
 
         let split_command = input.trim().split("/").collect::<Vec<&str>>();
 
-        println!("{split_command:?}");
         if split_command.len() == 2 {
             match split_command[1] {
                 "exit" | "quit" => {
@@ -96,18 +99,12 @@ fn read_user_input_and_send(
             }
         }
 
-        let split_input = input.trim().split(" ").collect::<Vec<&str>>();
+        let trimmed_input = input.trim();
 
-        println!("TEST: {:?}", split_input.join(" "));
-
-        match split_input[0] {
-            "" => continue,
-            " " => continue,
-            _ => {
-                let message = format!("MESS {}", split_input.join(""));
-                write_to_stream_and_flush(&stream, &message).unwrap();
-            }
-        };
+        if !trimmed_input.is_empty() {
+            let message = format!("MESS {user_id} {trimmed_input}");
+            write_to_stream_and_flush(&stream, &message).unwrap();
+        }
     }
 }
 
@@ -146,9 +143,18 @@ fn read_incoming_packets(mut stream: TcpStream, program_should_exit: Arc<AtomicB
 }
 
 fn write_to_stream_and_flush(mut stream: &TcpStream, message: &str) -> Result<(), ()> {
+    let _ = stream.flush().map_err(|err| {
+        eprintln!(
+            "Failed to flush stream {:?} with error {}",
+            stream.peer_addr(),
+            err
+        );
+    });
+
     let _ = stream.write(message.as_bytes()).map_err(|err| {
         eprintln!("Failed to write to stream with error {err}");
     });
+
     let _ = stream.flush().map_err(|err| {
         eprintln!(
             "Failed to flush stream {:?} with error {}",
