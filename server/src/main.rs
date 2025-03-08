@@ -68,7 +68,9 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    // This point will never be reached, Need to come up with a way of SIGTERM and a regular shutdown command
+    // This point will never be reached, Need to come up with a way of handling SIGTERM and a regular shutdown command
+    // Will revisit this when TUI is functional
+    // I hope not joining threads doesn't just leave them hanging forever...
     println!("Closing hanging Threads...");
     for handles in thread_handles {
         handles.join().unwrap();
@@ -107,6 +109,11 @@ fn handle_client(
                         "Client from {} disconnected without creating a user",
                         thread_ip_addr
                     );
+
+                    let message = format!("MESS A ghost left the channel... \n");
+                    for stream in streams.lock().unwrap().iter() {
+                        write_to_stream_and_flush(stream, &message).unwrap();
+                    }
                     break;
                 } else {
                     let users_clone = Arc::clone(&users);
@@ -119,6 +126,11 @@ fn handle_client(
                         "User \"{}\" from {} disconnected.",
                         thread_user_name, thread_ip_addr
                     );
+
+                    let message = format!("MESS {} has left the channel \n", thread_user_name);
+                    for stream in streams.lock().unwrap().iter() {
+                        write_to_stream_and_flush(stream, &message).unwrap();
+                    }
                     break;
                 }
             }
@@ -176,7 +188,7 @@ fn handle_client(
                 write_to_stream_and_flush(&stream, &format!("USER {}\n", new_user_uuid)).unwrap();
 
                 //Broadcast Entry to other clients
-                let message = format!("{} Has entered the channel\n", thread_user_name);
+                let message = format!("MESS {} Has entered the channel\n", thread_user_name);
                 for stream in streams.lock().unwrap().iter() {
                     write_to_stream_and_flush(stream, &message).unwrap();
                 }
@@ -185,7 +197,7 @@ fn handle_client(
                 //_validate_user(users, user_id, user_name)
 
                 let message = format!(
-                    "{} at {:?}: {}\n",
+                    "MESS {} at {:?}: {}\n",
                     thread_user_name,
                     chrono::Local::now(),
                     response_str_as_vec[2..].join(" ")
@@ -207,7 +219,7 @@ fn handle_client(
                 let streams_clone = Arc::clone(&streams);
                 remove_stream(streams_clone, thread_ip_addr);
 
-                let message = format!("User {:?} has left the channel\n", thread_user_name);
+                let message = format!("MESS User {:?} has left the channel\n", thread_user_name);
                 let streams_lock = streams.lock().unwrap();
                 for stream in streams_lock.iter() {
                     write_to_stream_and_flush(stream, &message).unwrap();
