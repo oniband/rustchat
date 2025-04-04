@@ -1,15 +1,3 @@
-// STRUCTURE:
-//          Iterate over connections
-//              -> On connection
-//                  -> Does User exist?
-//                      N:
-//                          -> Greet & initialize(add to vector of users)
-//                      Y:
-//                          -> Spawn a thread?
-//                              -> thread waits for input
-//                              -> send sanitized text out to all clients
-//                              -> repeat?
-
 // PACKET STRUCTURE: all packet types are 4 letters because that's easier :)
 //                  --- FROM CLIENTS ---
 //                  {NEWU username}
